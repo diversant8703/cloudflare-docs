@@ -5,6 +5,8 @@ tags:
   - Workflows
   - D1
   - R2
+languages:
+  - Typescript
 pcx_content_type: configuration
 title: Backup and save D1 database
 sidebar:
@@ -73,12 +75,14 @@ export class backupWorkflow extends WorkflowEntrypoint<Env, Params> {
       const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
       const { result } = (await res.json()) as any;
 
-      // The endpoint sends `signed_url` when the backup is ready.
+      // The endpoint sends `signed_url` when the backup is ready to download.
       // If we don't get `signed_url` we throw to retry the step.
       if (!result?.signed_url) throw new Error("Missing `signed_url`");
 
       const dumpResponse = await fetch(result.signed_url);
-      // We stream the file directly to R2
+      if (!dumpResponse.ok) throw new Error("Failed to fetch dump file");
+
+      // Finally, stream the file directly to R2
       await this.env.BACKUP_BUCKET.put(result.filename, dumpResponse.body);
     });
   }
